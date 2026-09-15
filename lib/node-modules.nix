@@ -32,6 +32,14 @@
     pkgs.stdenv.mkDerivation {
       inherit name src outputHash;
       nativeBuildInputs = [ pkgs.bun pkgs.cacert ];
+      # A fixed-output derivation is allowed to reach the network, and the
+      # machine it reaches it from is the caller's. Behind a proxy that
+      # terminates TLS — a corporate egress, a CI sandbox — `bun install`
+      # fails every tarball with `SELF_SIGNED_CERT_IN_CHAIN` unless it is told
+      # where the bundle is; `cacert`'s hook honours `NIX_SSL_CERT_FILE` when
+      # one is already set, and this is what lets one be. The same list every
+      # nixpkgs fetcher carries, for the same reason.
+      impureEnvVars = pkgs.lib.fetchers.proxyImpureEnvVars ++ [ "NIX_SSL_CERT_FILE" ];
       buildPhase = ''
         export HOME=$TMPDIR
         bun install --frozen-lockfile --no-progress
